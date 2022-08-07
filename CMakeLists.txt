@@ -371,7 +371,7 @@ file(GENERATE OUTPUT ${Ginkgo_BINARY_DIR}/ginkgo_$<CONFIG>.pc
 ginkgo_modify_flags(CMAKE_CUDA_FLAGS)
 ginkgo_modify_flags(CMAKE_CUDA_FLAGS_DEBUG)
 ginkgo_modify_flags(CMAKE_CUDA_FLAGS_RELEASE)
-ginkgo_install()
+#ginkgo_install()
 
 set(GINKGO_TEST_INSTALL_SRC_DIR "${Ginkgo_SOURCE_DIR}/test/test_install/")
 set(GINKGO_TEST_INSTALL_BIN_DIR "${Ginkgo_BINARY_DIR}/test/test_install/")
