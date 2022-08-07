@@ -48,7 +48,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 double measure_solve_time_in_s(const gko::Executor* exec, gko::LinOp* solver,
                                const gko::LinOp* b, gko::LinOp* x)
 {
-    constexpr int repeats{5};
+    constexpr int repeats{1};
     double duration{0};
     // Make a copy of x, so we can re-use the same initial guess multiple times
     auto x_copy = clone(x);
@@ -102,6 +102,7 @@ int main(int argc, char* argv[])
 
     // Map which generates the appropriate executor
     const auto executor_string = argc >= 2 ? argv[1] : "reference";
+    const auto matrix_string = "data/A.mtx";
     std::map<std::string, std::function<std::shared_ptr<gko::Executor>()>>
         exec_map{
             {"omp", [] { return gko::OmpExecutor::create(); }},
@@ -128,7 +129,7 @@ int main(int argc, char* argv[])
     // Note: this matrix is copied from "SOURCE_DIR/matrices" instead of from
     //       the local directory. For details, see
     //       "examples/cb-gmres/CMakeLists.txt"
-    auto A = share(gko::read<mtx>(std::ifstream("data/A.mtx"), exec));
+    auto A = share(gko::read<mtx>(std::ifstream(matrix_string), exec));
     // Create a uniform right-hand side with a norm2 of 1 on the host
     // (norm2(b) == 1), followed by copying it to the actual executor
     // (to make sure it also works for GPUs)
@@ -147,6 +148,28 @@ int main(int argc, char* argv[])
     auto x_reduce = clone(x_keep);
 
     const RealValueType reduction_factor{1e-6};
+    const unsigned int num_iters{20000u};
+
+    auto iter_stop_keep = gko::share(
+        gko::stop::Iteration::build().with_max_iters(num_iters).on(exec));
+    auto tol_stop_keep = gko::share(gko::stop::ResidualNorm<ValueType>::build()
+                                        .with_reduction_factor(reduction_factor)
+                                        .on(exec));
+    std::shared_ptr<const gko::log::Convergence<ValueType>> logger_keep =
+        gko::log::Convergence<ValueType>::create();
+    iter_stop_keep->add_logger(logger_keep);
+    tol_stop_keep->add_logger(logger_keep);
+
+    auto iter_stop_reduce = gko::share(
+        gko::stop::Iteration::build().with_max_iters(num_iters).on(exec));
+    auto tol_stop_reduce =
+        gko::share(gko::stop::ResidualNorm<ValueType>::build()
+                       .with_reduction_factor(reduction_factor)
+                       .on(exec));
+    std::shared_ptr<const gko::log::Convergence<ValueType>> logger_reduce =
+        gko::log::Convergence<ValueType>::create();
+    iter_stop_reduce->add_logger(logger_reduce);
+    tol_stop_reduce->add_logger(logger_reduce);
 
     // Generate two solver factories: `_keep` uses the same precision for the
     // krylov basis as the matrix, and `_reduce` uses one precision below it.
@@ -154,11 +177,7 @@ int main(int argc, char* argv[])
     // storage type
     auto solver_gen_keep =
         cb_gmres::build()
-            .with_criteria(
-                gko::stop::Iteration::build().with_max_iters(1000u).on(exec),
-                gko::stop::RelativeResidualNorm<ValueType>::build()
-                    .with_tolerance(reduction_factor)
-                    .on(exec))
+            .with_criteria(iter_stop_keep, tol_stop_keep)
             .with_krylov_dim(100u)
             .with_storage_precision(
                 gko::solver::cb_gmres::storage_precision::keep)
@@ -166,14 +185,10 @@ int main(int argc, char* argv[])
 
     auto solver_gen_reduce =
         cb_gmres::build()
-            .with_criteria(
-                gko::stop::Iteration::build().with_max_iters(1000u).on(exec),
-                gko::stop::RelativeResidualNorm<ValueType>::build()
-                    .with_tolerance(reduction_factor)
-                    .on(exec))
+            .with_criteria(iter_stop_reduce, tol_stop_reduce)
             .with_krylov_dim(100u)
             .with_storage_precision(
-                gko::solver::cb_gmres::storage_precision::reduce1)
+                gko::solver::cb_gmres::storage_precision::use_sz)  // reduce1)
             .on(exec);
     // Generate the actual solver from the factory and the matrix.
     auto solver_keep = solver_gen_keep->generate(A);
@@ -191,6 +206,10 @@ int main(int argc, char* argv[])
     //       quite small
     std::cout << "Solve time without compression: " << time_keep << " s\n"
               << "Solve time with compression:    " << time_reduce << " s\n";
+    std::cout << "Number iterations without compression: "
+              << logger_keep->get_num_iterations() << '\n'
+              << "Number iterations with compression:    "
+              << logger_reduce->get_num_iterations() << '\n';
 
     // To measure if your solution has actually converged, the error of the
     // solution is measured.
