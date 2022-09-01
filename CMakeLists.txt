@@ -363,15 +363,15 @@ string(REPLACE ";" " " GINKGO_INTERFACE_CXX_FLAGS "${GINKGO_INTERFACE_CXX_FLAGS}
 string(REPLACE ";" " " GINKGO_INTERFACE_LINK_FLAGS "${GINKGO_INTERFACE_LINK_FLAGS}")
 configure_file(${Ginkgo_SOURCE_DIR}/cmake/ginkgo.pc.in
     ${Ginkgo_BINARY_DIR}/ginkgo.pc.in @ONLY)
-file(GENERATE OUTPUT ${Ginkgo_BINARY_DIR}/ginkgo_$<CONFIG>.pc
-    INPUT ${Ginkgo_BINARY_DIR}/ginkgo.pc.in)
+#file(GENERATE OUTPUT ${Ginkgo_BINARY_DIR}/ginkgo_$<CONFIG>.pc
+#     INPUT ${Ginkgo_BINARY_DIR}/ginkgo.pc.in)
 
 # WINDOWS NVCC has " inside the string, add escape character
 # to avoid config problem.
 ginkgo_modify_flags(CMAKE_CUDA_FLAGS)
 ginkgo_modify_flags(CMAKE_CUDA_FLAGS_DEBUG)
 ginkgo_modify_flags(CMAKE_CUDA_FLAGS_RELEASE)
-#ginkgo_install()
+ginkgo_install()
 
 set(GINKGO_TEST_INSTALL_SRC_DIR "${Ginkgo_SOURCE_DIR}/test/test_install/")
 set(GINKGO_TEST_INSTALL_BIN_DIR "${Ginkgo_BINARY_DIR}/test/test_install/")
