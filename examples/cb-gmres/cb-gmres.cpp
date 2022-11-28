@@ -210,12 +210,14 @@ void run_benchmarks(std::shared_ptr<gko::Executor> exec,
     default_ss.stop_rel_res = rel_res_norm;
     default_ss.krylov_dim = 100u;
     default_ss.storage_prec = gko::solver::cb_gmres::storage_precision::keep;
-    //*
+    /*
     default_ss.precond = precond_type::build()
                              .with_max_block_size(32u)
                              .with_skip_sorting(true)
                              .on(exec)
                              ->generate(A);
+    /*/
+    default_ss.precond = nullptr;
     //*/
     default_ss.lp_config = "ieee";
 
@@ -237,12 +239,10 @@ void run_benchmarks(std::shared_ptr<gko::Executor> exec,
 
     const auto tt_str = [](int reduction) {
         const std::array<char, 4> types{'d', 'f', 'h', '?'};
-        const int base =
-            std::is_same<ValueType, double>::value
-                ? 0
-                : std::is_same<ValueType, float>::value
-                      ? 1
-                      : std::is_same<ValueType, gko::half>::value ? 2 : 3;
+        const int base = std::is_same<ValueType, double>::value      ? 0
+                         : std::is_same<ValueType, float>::value     ? 1
+                         : std::is_same<ValueType, gko::half>::value ? 2
+                                                                     : 3;
         if (base == 3) {
             return types[base];
         }
@@ -261,6 +261,7 @@ void run_benchmarks(std::shared_ptr<gko::Executor> exec,
     benchmarks.back().settings.storage_prec =
         gko::solver::cb_gmres::storage_precision::keep;
 
+    /*
     benchmarks.emplace_back();
     benchmarks.back().name = get_name(1);
     benchmarks.back().settings = default_ss;
@@ -287,6 +288,7 @@ void run_benchmarks(std::shared_ptr<gko::Executor> exec,
             gko::solver::cb_gmres::storage_precision::use_sz;
         benchmarks.back().settings.lp_config = config_file;
     }
+    */
 
     // Note: The time might not be significantly different since the matrix is
     //       quite small
@@ -336,12 +338,13 @@ int main(int argc, char* argv[])
     const std::string compression_json_folder =
         argc >= ++c_param + 1 ? argv[c_param] : "lp_configs";
     const unsigned max_iters =
-        argc >= ++c_param + 1 ? std::stoi(argv[c_param]) : 2000;
+        argc >= ++c_param + 1 ? std::stoi(argv[c_param]) : 101;
     const double rel_res_norm =
-        argc >= ++c_param + 1 ? std::stof(argv[c_param]) : 1e-6;
+        argc >= ++c_param + 1 ? std::stof(argv[c_param]) : 1e-16;
     const std::string precision =
         argc >= ++c_param + 1 ? argv[c_param] : "double";
-    const auto executor_string = argc >= ++c_param + 1 ? argv[c_param] : "omp";
+    const auto executor_string =
+        argc >= ++c_param + 1 ? argv[c_param] : "reference";
     // Map which generates the appropriate executor
     std::map<std::string, std::function<std::shared_ptr<gko::Executor>()>>
         exec_map{
