@@ -257,8 +257,8 @@ struct compression_helper {
             pressio library;
             pc_ = library.get_compressor("pressio");
             pc_->set_options({
-                {"pressio:metric", "composite"s},
-                {"composite:plugins", metrics_plugins_},
+                //{"pressio:metric", "composite"s},
+                //{"composite:plugins", metrics_plugins_},
                 //                {"write_debug_inputs:write_input", true},
                 //                {"write_debug_inputs:display_paths", true},
                 //                {"write_debug_inputs:io", "posix"},
@@ -269,19 +269,17 @@ struct compression_helper {
             });
             pc_->set_name("pressio");
             pc_->set_options(options_from_file);
-            std::cerr << pc_->get_options() << std::endl;
+            // std::cerr << pc_->get_options() << std::endl;
             const auto pressio_type = std::is_same<ValueType, float>::value
                                           ? pressio_float_dtype
                                           : pressio_double_dtype;
             for (size_type i = 0; i < p_data_vec_.size(); ++i) {
                 p_data_vec_[i] = pressio_data::empty(pressio_byte_dtype, {});
             }
-            in_temp_ = pressio_data::owning(
-                pressio_type,
-                {static_cast<uint64>(ceildiv(num_rows_, 44ul)), 44l});
-            out_temp_ = pressio_data::owning(
-                pressio_type,
-                {static_cast<uint64>(ceildiv(num_rows_, 44ul)), 44l});
+            in_temp_ = pressio_data::owning(pressio_type, {num_rows});
+            //{static_cast<uint64>(ceildiv(num_rows_, 44ul)), 44l});
+            out_temp_ = pressio_data::owning(pressio_type, {num_rows});
+            //{static_cast<uint64>(ceildiv(num_rows_, 44ul)), 44l});
         }
     }
 
@@ -332,10 +330,11 @@ private:
 template <class T>
 char print_type()
 {
-    return std::is_same<T, double>::value      ? 'd'
-           : std::is_same<T, float>::value     ? 'f'
-           : std::is_same<T, gko::half>::value ? 'h'
-                                               : '?';
+    return std::is_same<T, double>::value
+               ? 'd'
+               : std::is_same<T, float>::value
+                     ? 'f'
+                     : std::is_same<T, gko::half>::value ? 'h' : '?';
 }
 
 
@@ -571,8 +570,8 @@ void CbGmres<ValueType>::apply_dense_impl(
                     span{0, restart_iter},
                     span{0, dense_b->get_size()[1] * (restart_iter)});
 
-                print_krylov_vectors(krylov_bases_range, restart_iter + 1,
-                                     total_iter);
+                // print_krylov_vectors(krylov_bases_range, restart_iter + 1,
+                //                     total_iter);
                 exec->run(cb_gmres::make_step_2(
                     residual_norm_collection.get(),
                     krylov_bases_range.get_accessor().to_const(),
